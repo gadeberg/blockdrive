@@ -237,3 +237,119 @@ kbd {
 #play:disabled { opacity: 0.45; cursor: default; }
 
 .hint { margin: 12px 0 0; text-align: center; color: var(--dim); font-size: 11px; }
+
+/* ---------- world manager ---------- */
+
+.current {
+  margin: -12px 0 18px;
+  color: var(--dim);
+  font-size: 11px;
+}
+.current b { color: var(--ink); font-weight: 600; }
+.current span { margin-left: 8px; opacity: 0.75; }
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.tab {
+  padding: 7px 13px;
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim);
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+.tab:hover { color: var(--ink); }
+.tab.on { color: var(--accent); border-bottom-color: var(--accent); }
+
+.view.hidden { display: none; }
+
+.worldlist {
+  display: grid;
+  gap: 6px;
+  max-height: 210px;
+  overflow-y: auto;
+  margin-bottom: 16px;
+}
+.worldlist .empty {
+  padding: 14px 2px;
+  color: var(--dim);
+  text-align: center;
+}
+
+.world {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid transparent;
+}
+.world.on {
+  border-color: var(--accent);
+  background: rgba(255,207,74,0.12);
+}
+.world .info { flex: 1; min-width: 0; }
+.world .name {
+  display: block;
+  color: var(--ink);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.world .meta { display: block; color: var(--dim); font-size: 10px; margin-top: 2px; }
+
+.world button,
+.worldform button,
+.worldactions button {
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 11px;
+  color: var(--ink);
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.world button:hover,
+.worldform button:hover,
+.worldactions button:hover { background: rgba(255,255,255,0.16); }
+.world button.danger:hover {
+  background: rgba(216,60,50,0.28);
+  border-color: rgba(216,60,50,0.5);
+}
+
+.worldform {
+  display: grid;
+  grid-template-columns: 1fr 130px auto;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.worldform input {
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--ink);
+  background: rgba(0,0,0,0.28);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 6px;
+  min-width: 0;
+}
+.worldform input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.worldform input::placeholder { color: rgba(154,163,178,0.7); }
+
+.worldactions { display: flex; gap: 6px; margin-bottom: 12px; }
+.worldactions button { flex: 1; }

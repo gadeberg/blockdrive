@@ -70,6 +70,7 @@ standing next to it to get back in.
 | `src/carmodel.js` | the car, built out of boxes |
 | `src/player.js` | the first-person walker: AABB vs voxels, auto-stepping |
 | `src/audio.js` | every sound, synthesised — engine, tyres, wind, impacts, ambience |
+| `src/storage.js` | saving and loading worlds: slots, files, and validation |
 | `src/noise.js` | seeded Perlin / fBm |
 | `src/main.js` | renderer, camera rig, HUD, block editing, game loop |
 
@@ -119,6 +120,29 @@ pressing into a ledge and jumping carries you onto it.
 The parked car is a box you collide with rather than walk through, and it keeps
 being simulated while you're out of it, so it settles and rolls to rest.
 
+### Saving
+
+A world is its **seed plus every block you have changed** — nothing else. The
+terrain generator is deterministic, so that pair reproduces the world exactly,
+and a save stays tiny: a few hundred bytes for a small build, rather than the
+24 KB per chunk a raw dump would cost. `World.setBlock` is the single chokepoint
+where edits happen, so it records them, and `generate()` replays them over
+freshly generated terrain — an edit routinely predates the chunk it belongs to,
+because chunks are generated lazily as you drive toward them.
+
+Worlds live in named slots in browser storage and autosave every 20 seconds
+while something has changed, when you press Esc, and when the tab closes. The
+Worlds tab on the pause screen lists them with their seed, block count and last
+save; you can create one from a seed (any text works — it gets hashed), load,
+delete, and export or import a `.blockdrive.json` file to move a world between
+machines or hand it to someone.
+
+Imported files are treated as untrusted: format, version, seed, chunk keys,
+block indices and block ids are all validated before anything reaches the world,
+because a bad index would quietly corrupt a chunk or hang the tab. World names
+are rendered with `textContent`, never `innerHTML`. An import always lands on a
+fresh id, so it can never overwrite a world you already have.
+
 ### Sound
 
 All of it is generated at runtime; there are no audio files. The engine is four
@@ -163,6 +187,9 @@ Handling lives in the `P` object at the top of `src/vehicle.js` — engine force
 suspension rate, grip, steering falloff, step height. On-foot movement is the
 same pattern in `src/player.js` (set `stepHeight` to 0.6 if you want strict
 Minecraft rules). Mix levels are the `MIX` object in `src/audio.js`.
+
+World saves are keyed under `blockdrive.*` in localStorage; clearing site data
+loses them, which is what Export is for.
 
 Shadows use a single shadow map that follows you, sized by `SHADOW_EXTENT` and
 pushed ahead of the camera by `SHADOW_LEAD` in `src/main.js`. Both matter more

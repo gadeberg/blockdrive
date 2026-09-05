@@ -41,6 +41,13 @@
   <div class="panel">
     <h1>Blockdrive</h1>
     <p class="tag">A voxel world you drive through. Park, get out, and carve the road you want.</p>
+    <p class="current">World: <b id="currentWorld">loading</b><span id="currentMeta"></span></p>
+
+    <div class="tabs">
+      <button class="tab on" data-view="play" type="button">Controls</button>
+      <button class="tab" data-view="worlds" type="button">Worlds</button>
+    </div>
+    <div id="view-play" class="view">
     <div class="cols">
       <div class="col">
         <h2>Driving</h2>
@@ -73,6 +80,27 @@
       <div><kbd>R</kbd><span>respawn</span></div>
       <div><kbd>M</kbd><span>mute sound</span></div>
       <div><kbd>Esc</kbd><span>release mouse</span></div>
+    </div>
+
+    </div>
+
+    <div id="view-worlds" class="view hidden">
+      <div id="worldList" class="worldlist"></div>
+
+      <div class="worldform">
+        <input id="newName" type="text" placeholder="New world name" maxlength="48" autocomplete="off">
+        <input id="newSeed" type="text" placeholder="Seed (optional)" maxlength="24" autocomplete="off">
+        <button id="createWorld" type="button">Create</button>
+      </div>
+
+      <div class="worldactions">
+        <button id="saveNow" type="button">Save now</button>
+        <button id="exportWorld" type="button">Export file</button>
+        <button id="importWorld" type="button">Import file</button>
+        <input id="importInput" type="file" accept="application/json,.json" hidden>
+      </div>
+
+      <p class="hint" id="storageNote"></p>
     </div>
 
     <button id="play">Drive</button>

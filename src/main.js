@@ -7,6 +7,11 @@ import { buildCar } from './carmodel.js';
 import { Input } from './input.js';
 import { GameAudio } from './audio.js';
 import { B, BLOCKS, buildAtlasCanvas, hardnessOf, TILE, ATLAS_COLS } from './blocks.js';
+import * as storage from './storage.js';
+import {
+  buildSave, cleanName, deleteWorld, downloadSave, editsFrom, lastWorldId,
+  listWorlds, loadWorld, newId, parseSeed, readSaveFile, saveWorld, storageAvailable,
+} from './storage.js';
 
 const VIEW_DISTANCE = 8;          // chunks
 const REACH = 6;                  // blocks you can mine/place from, on foot
@@ -443,6 +448,227 @@ function updateCarMesh() {
   });
 }
 
+
+// ---------------------------------------------------------------- worlds
+
+const AUTOSAVE_EVERY = 20;   // seconds, and only when something has changed
+
+let current = { id: newId(), name: 'My world', seed: 20260905, created: Date.now() };
+let autosaveTimer = AUTOSAVE_EVERY;
+
+const elCurrentWorld = document.getElementById('currentWorld');
+const elCurrentMeta = document.getElementById('currentMeta');
+const elWorldList = document.getElementById('worldList');
+const elNewName = document.getElementById('newName');
+const elNewSeed = document.getElementById('newSeed');
+const elStorageNote = document.getElementById('storageNote');
+const elImportInput = document.getElementById('importInput');
+
+function captureState() {
+  return {
+    mode,
+    car: { pos: vehicle.pos.toArray(), quat: vehicle.quat.toArray() },
+    player: { pos: player.pos.toArray(), yaw: player.yaw, pitch: player.pitch },
+    slot,
+    headlights: car.beam.intensity > 0,
+  };
+}
+
+function applyState(state) {
+  if (state.car) {
+    vehicle.pos.fromArray(state.car.pos);
+    vehicle.quat.fromArray(state.car.quat).normalize();
+    vehicle.vel.set(0, 0, 0);
+    vehicle.angVel.set(0, 0, 0);
+    vehicle.steer = 0;
+    vehicle.impact = 0;
+    vehicle.stuck = 0;
+  } else {
+    spawn();
+  }
+
+  mode = state.mode === 'foot' ? 'foot' : 'drive';
+  if (state.player) {
+    const [px, py, pz] = state.player.pos;
+    player.placeAt(px, py, pz, state.player.yaw);
+    player.pitch = state.player.pitch;
+  } else if (mode === 'foot') {
+    seatPlayer();
+  }
+
+  selectSlot(Number.isInteger(state.slot) ? state.slot : 0);
+  car.beam.intensity = state.headlights ? 60 : 0;
+  applyMode();
+}
+
+/** Make `save` the world we're playing: rebuild terrain, restore where we were. */
+function activate(save) {
+  current = { id: save.id, name: save.name, seed: save.seed, created: save.created };
+  world.reset(save.seed, editsFrom(save));
+  terrain.clear();
+  applyState(save.state || {});
+
+  const f = focusPosition();
+  world.ensureRadius(f.x, f.z, 3);
+  terrain.preload(f.x, f.z, 4);
+
+  storage.setLastWorldId(save.id);
+  autosaveTimer = AUTOSAVE_EVERY;
+  refreshWorldUI();
+}
+
+function saveCurrent({ quiet = false } = {}) {
+  const save = buildSave({ ...current, world, state: captureState() });
+  const res = saveWorld(save);
+  if (res.ok) {
+    world.dirty = false;
+    if (!quiet) toast(`saved "${current.name}"`);
+    refreshWorldUI();
+  } else if (!quiet) {
+    toast(res.error);
+  }
+  return res.ok;
+}
+
+function loadById(id) {
+  if (id === current.id) return;
+  if (world.dirty) saveCurrent({ quiet: true });   // never lose the world you're leaving
+  const res = loadWorld(id);
+  if (!res.ok) { toast(res.error); return; }
+  activate(res.save);
+  toast(`loaded "${res.save.name}"`);
+}
+
+function createWorld(name, seedText) {
+  if (world.dirty) saveCurrent({ quiet: true });
+  activate({
+    id: newId(),
+    name: cleanName(name, 'New world'),
+    seed: parseSeed(seedText),
+    created: Date.now(),
+    edits: {},
+    state: {},
+  });
+  saveCurrent({ quiet: true });
+  toast(`new world "${current.name}"`);
+}
+
+// --- UI
+
+function timeAgo(ts) {
+  if (!ts) return 'never saved';
+  const s = Math.max(0, (Date.now() - ts) / 1000);
+  if (s < 60) return 'just now';
+  if (s < 3600) return `${Math.floor(s / 60)} min ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)} h ago`;
+  return `${Math.floor(s / 86400)} d ago`;
+}
+
+function refreshWorldUI() {
+  elCurrentWorld.textContent = current.name;
+  elCurrentMeta.textContent = `seed ${current.seed} · ${world.editCount()} blocks changed`;
+  renderWorldList();
+}
+
+function renderWorldList() {
+  elWorldList.textContent = '';
+  const worlds = listWorlds();
+
+  if (!worlds.length) {
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.textContent = 'No saved worlds yet.';
+    elWorldList.appendChild(empty);
+    return;
+  }
+
+  for (const w of worlds) {
+    const isCurrent = w.id === current.id;
+    const row = document.createElement('div');
+    row.className = isCurrent ? 'world on' : 'world';
+
+    const info = document.createElement('div');
+    info.className = 'info';
+    const name = document.createElement('span');
+    name.className = 'name';
+    name.textContent = w.name;          // never innerHTML: names can come from a file
+    const meta = document.createElement('span');
+    meta.className = 'meta';
+    meta.textContent = `seed ${w.seed} · ${w.count} block${w.count === 1 ? '' : 's'} · ${timeAgo(w.saved)}`;
+    info.append(name, meta);
+
+    const load = document.createElement('button');
+    load.type = 'button';
+    load.textContent = isCurrent ? 'Playing' : 'Load';
+    load.disabled = isCurrent;
+    load.addEventListener('click', () => loadById(w.id));
+
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'danger';
+    del.textContent = 'Delete';
+    del.disabled = isCurrent;
+    if (isCurrent) del.title = 'Load a different world before deleting this one';
+    let armed = false;
+    del.addEventListener('click', () => {
+      if (!armed) {                      // two clicks, rather than a blocking confirm()
+        armed = true;
+        del.textContent = 'Sure?';
+        setTimeout(() => { armed = false; del.textContent = 'Delete'; }, 3000);
+        return;
+      }
+      deleteWorld(w.id);
+      toast(`deleted "${w.name}"`);
+      renderWorldList();
+    });
+
+    row.append(info, load, del);
+    elWorldList.appendChild(row);
+  }
+}
+
+document.querySelectorAll('.tab').forEach((tab) => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('on', t === tab));
+    const want = tab.dataset.view;
+    document.getElementById('view-play').classList.toggle('hidden', want !== 'play');
+    document.getElementById('view-worlds').classList.toggle('hidden', want !== 'worlds');
+    if (want === 'worlds') refreshWorldUI();
+  });
+});
+
+document.getElementById('createWorld').addEventListener('click', () => {
+  createWorld(elNewName.value, elNewSeed.value);
+  elNewName.value = '';
+  elNewSeed.value = '';
+});
+
+document.getElementById('saveNow').addEventListener('click', () => saveCurrent());
+
+document.getElementById('exportWorld').addEventListener('click', () => {
+  downloadSave(buildSave({ ...current, world, state: captureState() }));
+  toast('exported');
+});
+
+document.getElementById('importWorld').addEventListener('click', () => elImportInput.click());
+
+elImportInput.addEventListener('change', async () => {
+  const file = elImportInput.files && elImportInput.files[0];
+  elImportInput.value = '';
+  if (!file) return;
+
+  const res = await readSaveFile(file);
+  if (!res.ok) { toast(res.error); return; }
+
+  if (world.dirty) saveCurrent({ quiet: true });
+  // Always land on a fresh id so an import can never overwrite a world you
+  // already have.
+  res.save.id = newId();
+  activate(res.save);
+  saveCurrent({ quiet: true });
+  toast(`imported "${res.save.name}"`);
+});
+
 // ---------------------------------------------------------------- loop
 
 let running = false;
@@ -542,6 +768,12 @@ function frame(now) {
     ambientTimer -= dt;
     if (ambientTimer <= 0) { ambientTimer = 0.5; updateAmbientContext(); }
 
+    autosaveTimer -= dt;
+    if (autosaveTimer <= 0) {
+      autosaveTimer = AUTOSAVE_EVERY;
+      if (world.dirty) saveCurrent({ quiet: true });
+    }
+
     let slip = 0;
     for (const w of vehicle.wheels) if (w.slip > slip) slip = w.slip;
     audio.update(dt, {
@@ -596,7 +828,13 @@ input.onEscape = () => {
   hud.classList.add('hidden');
   startPanel.classList.remove('hidden');
   playBtn.textContent = 'Resume';
+  saveCurrent({ quiet: true });
 };
+
+// localStorage is synchronous, so this is safe to do on the way out.
+addEventListener('beforeunload', () => {
+  if (running || world.dirty) saveCurrent({ quiet: true });
+});
 
 playBtn.disabled = true;
 playBtn.addEventListener('click', () => {
@@ -609,7 +847,9 @@ playBtn.addEventListener('click', () => {
 
 // dev hook: inspect live state from the console
 window.__dbg = {
-  vehicle, world, terrain, input, player, audio,
+  vehicle, world, terrain, input, player, audio, storage,
+  save: () => saveCurrent(),
+  get world_() { return current; },
   get mode() { return mode; },
   state: () => ({
     running,
@@ -626,10 +866,28 @@ requestAnimationFrame(frame);
 
 // Build the ground under the car before the first frame the player sees.
 setTimeout(() => {
-  spawn();
-  terrain.preload(vehicle.pos.x, vehicle.pos.z, 4);
-  spawn();
-  applyMode();
+  const previous = lastWorldId();
+  const restored = previous ? loadWorld(previous) : null;
+
+  if (restored && restored.ok) {
+    activate(restored.save);
+    loadingText.textContent = `resumed "${current.name}"`;
+  } else {
+    activate({
+      id: current.id,
+      name: current.name,
+      seed: current.seed,
+      created: current.created,
+      edits: {},
+      state: {},
+    });
+    saveCurrent({ quiet: true });
+    loadingText.textContent = 'world ready';
+  }
+
+  elStorageNote.textContent = storageAvailable()
+    ? 'Autosaves as you play, and whenever you press Esc.'
+    : 'Browser storage is blocked here, so worlds cannot autosave. Use Export to keep one.';
+
   playBtn.disabled = false;
-  loadingText.textContent = 'world ready';
 }, 60);

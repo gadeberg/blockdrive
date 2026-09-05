@@ -49,6 +49,28 @@ export class World {
     this.noise = new Noise(seed);
     this.chunks = new Map();
     this.listeners = [];
+
+    // Every block the player has changed, keyed by chunk then by index within
+    // it. Terrain is deterministic from the seed, so seed + this is the entire
+    // world — which is what makes a save file small enough to keep in
+    // localStorage and to hand to someone else.
+    this.edits = new Map();
+    this.dirty = false;   // are there unsaved edits?
+  }
+
+  /** Throw the world away and rebuild it from a seed and an edit log. */
+  reset(seed, edits = new Map()) {
+    this.seed = seed;
+    this.noise = new Noise(seed);
+    this.chunks.clear();
+    this.edits = edits;
+    this.dirty = false;
+  }
+
+  editCount() {
+    let n = 0;
+    for (const m of this.edits.values()) n += m.size;
+    return n;
   }
 
   onChange(fn) { this.listeners.push(fn); }
@@ -188,7 +210,22 @@ export class World {
       }
     }
 
+    this._applyEdits(ch);
     ch.generated = true;
+  }
+
+  // Replay the player's changes over freshly generated terrain. Chunks are
+  // generated lazily, so an edit can easily predate the chunk it belongs to.
+  _applyEdits(ch) {
+    const log = this.edits.get(chunkKey(ch.cx, ch.cz));
+    if (!log) return;
+    for (const [i, b] of log) {
+      ch.blocks[i] = b;
+      if (b !== B.AIR) {
+        const y = (i / CH_AREA) | 0;
+        if (y > ch.maxY) ch.maxY = y;
+      }
+    }
   }
 
   _tree(ch, wx, wy, wz) {
@@ -243,9 +280,17 @@ export class World {
     const ch = this.ensureChunk(cx, cz);
     const lx = x - cx * CH_X;
     const lz = z - cz * CH_Z;
-    if (ch.blocks[idx(lx, y, lz)] === b) return false;
+    const i = idx(lx, y, lz);
+    if (ch.blocks[i] === b) return false;
     ch.set(lx, y, lz, b);
     ch.dirty = true;
+
+    const key = chunkKey(cx, cz);
+    let log = this.edits.get(key);
+    if (!log) { log = new Map(); this.edits.set(key, log); }
+    log.set(i, b);
+    this.dirty = true;
+
     this._notify(cx, cz);
 
     // a change on a chunk border shows up in the neighbour's mesh too

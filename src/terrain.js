@@ -130,6 +130,18 @@ export class Terrain {
     return this.pending.length;
   }
 
+  /** Drop every mesh — used when swapping to a different world. */
+  clear() {
+    for (const mesh of this.meshes.values()) {
+      this.group.remove(mesh);
+      mesh.geometry.dispose();
+    }
+    this.meshes.clear();
+    this.pending = [];
+    this.urgent.clear();
+    this.centerKey = null;
+  }
+
   // Blocking build of everything within `radius` — used for the initial load
   // so the first frame isn't a hole in the ground.
   preload(worldX, worldZ, radius = 4) {
