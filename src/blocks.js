@@ -266,13 +266,69 @@ export function buildAtlasCanvas() {
   return canvas;
 }
 
-export function buildAtlasTexture() {
-  const tex = new THREE.CanvasTexture(buildAtlasCanvas());
+/**
+ * Build the mip chain by hand.
+ *
+ * Letting the GPU generate mipmaps averages neighbouring atlas tiles together,
+ * so at distance the road blends with the kerb, the grass and the centre line
+ * and washes out to a flat grey — with visible bands where the level changes.
+ * Downscaling every tile on its own, always from the full-resolution atlas,
+ * keeps tiles from ever bleeding into one another.
+ */
+function buildMipChain(base) {
+  const levels = [base];
+  let size = ATLAS_PX;
+
+  while (size > 1) {
+    size = size >> 1;
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
+    const cell = size / ATLAS_COLS;
+    const prev = levels[levels.length - 1];
+    const prevCell = prev.width / ATLAS_COLS;
+
+    if (cell >= 1) {
+      // Halve each tile from the level above, tile by tile. Going level by
+      // level gives the same progressive low-pass a normal mip chain has (so
+      // distant surfaces don't alias), while staying inside tile boundaries.
+      for (let ty = 0; ty < ATLAS_COLS; ty++) {
+        for (let tx = 0; tx < ATLAS_COLS; tx++) {
+          ctx.drawImage(
+            prev,
+            tx * prevCell, ty * prevCell, prevCell, prevCell,
+            tx * cell, ty * cell, cell, cell,
+          );
+        }
+      }
+    } else {
+      // Under one pixel per tile the atlas cannot keep them apart any more.
+      // These levels are only reached when a whole block is sub-pixel.
+      ctx.drawImage(prev, 0, 0, size, size);
+    }
+    levels.push(canvas);
+  }
+  return levels;
+}
+
+export function buildAtlasTexture(anisotropy = 1) {
+  const base = buildAtlasCanvas();
+  const tex = new THREE.CanvasTexture(base);
   tex.magFilter = THREE.NearestFilter;
+  // Nearest *within* a level keeps blocks crisp and stops neighbouring tiles
+  // being sampled; linear *between* levels avoids a hard transition line.
   tex.minFilter = THREE.NearestMipmapLinearFilter;
-  tex.generateMipmaps = true;
+  tex.mipmaps = buildMipChain(base);
+  tex.generateMipmaps = false;
+  // Without this, a surface seen at a grazing angle — which is every road you
+  // are driving down — picks an over-blurred mip and bands across the screen.
+  tex.anisotropy = anisotropy;
   tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
   tex.colorSpace = THREE.SRGBColorSpace;
+  tex.needsUpdate = true;
   return tex;
 }
 

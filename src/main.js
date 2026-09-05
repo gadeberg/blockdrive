@@ -127,7 +127,8 @@ function updateShadowCamera(focus) {
 // ---------------------------------------------------------------- world
 
 const world = new World();
-const terrain = new Terrain(world, scene, VIEW_DISTANCE);
+const terrain = new Terrain(world, scene, VIEW_DISTANCE,
+  renderer.capabilities.getMaxAnisotropy());
 const vehicle = new Vehicle(world);
 const player = new Player(world);
 const audio = new GameAudio();
@@ -848,6 +849,7 @@ playBtn.addEventListener('click', () => {
 // dev hook: inspect live state from the console
 window.__dbg = {
   vehicle, world, terrain, input, player, audio, storage,
+  camera, renderer, scene, sun,
   save: () => saveCurrent(),
   get world_() { return current; },
   get mode() { return mode; },

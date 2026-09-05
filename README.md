@@ -191,6 +191,28 @@ Minecraft rules). Mix levels are the `MIX` object in `src/audio.js`.
 World saves are keyed under `blockdrive.*` in localStorage; clearing site data
 loses them, which is what Export is for.
 
+### Texture filtering
+
+Two things matter for a world made of tiled cubes, and both show up as
+flickering lines on the road ahead of you rather than anywhere obvious:
+
+- **Anisotropy.** A road you are driving down is seen at a grazing angle, which
+  is the worst case for isotropic mip selection: the GPU picks a level from the
+  larger axis derivative, over-blurs along the direction of travel, and lays
+  visible bands across the surface that swim as you turn. The atlas is sampled
+  at the hardware maximum, which is what actually fixed it.
+- **The mip chain is built by hand.** Letting the GPU generate mipmaps for a
+  texture atlas averages neighbouring tiles together, so at distance asphalt
+  blends into kerb, grass and centre line and the road washes out to a flat
+  grey. Each level is instead built tile by tile from the level above, so tiles
+  never bleed across their borders, and the low-pass stays progressive the way
+  a normal chain is. Below one pixel per tile the atlas cannot separate them at
+  all, but nothing that small is legible anyway.
+
+`minFilter` is `NearestMipmapLinear`: nearest *within* a level keeps blocks
+crisp and avoids sampling neighbouring tiles, linear *between* levels stops the
+transition being a hard line.
+
 Shadows use a single shadow map that follows you, sized by `SHADOW_EXTENT` and
 pushed ahead of the camera by `SHADOW_LEAD` in `src/main.js`. Both matter more
 than they look: too small a box and its edge draws a hard line across the road

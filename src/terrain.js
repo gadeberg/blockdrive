@@ -7,13 +7,13 @@ import { buildChunkGeometry } from './mesher.js';
 import { buildAtlasTexture } from './blocks.js';
 
 export class Terrain {
-  constructor(world, scene, viewDistance = 7) {
+  constructor(world, scene, viewDistance = 7, anisotropy = 1) {
     this.world = world;
     this.scene = scene;
     this.viewDistance = viewDistance;
 
     this.material = new THREE.MeshLambertMaterial({
-      map: buildAtlasTexture(),
+      map: buildAtlasTexture(anisotropy),
       vertexColors: true,
     });
 
