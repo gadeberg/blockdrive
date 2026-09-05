@@ -112,6 +112,7 @@ export class Vehicle {
     this.steer = 0;
     this.groundedCount = 0;
     this.impact = 0;       // set on a hard collision, decays; drives camera shake
+    this.impactEvent = 0;  // per-collision peak, consumed by the audio layer
     this.airborne = 0;     // seconds since last ground contact
     this.stuck = 0;        // seconds spent with the hull inside terrain
 
@@ -384,7 +385,16 @@ export class Vehicle {
         const k = limit / mag;
         fFwd *= k;
         fSide *= k;
-        w.slip = Math.min(1, (mag / limit - 1) * 0.35);
+        // Slip is the sliding speed we failed to cancel, in m/s — a tyre
+        // squeals because it is sliding, not because it is working hard. The
+        // old force ratio pinned to 1 under plain straight-line acceleration,
+        // and on a lightly loaded wheel, so it carried no information at all.
+        const unmet = ((mag - limit) * dt) / quarter;
+        // A wheel that is barely touching the ground slides freely but makes
+        // no noise, so weight the result by how loaded the tyre actually is —
+        // otherwise every bump chirps at you on a straight road.
+        const load = Math.min(1, susF / 3000);
+        w.slip = Math.min(1, unmet / 3) * load;
       } else {
         w.slip *= 0.85;
       }
@@ -541,7 +551,9 @@ export class Vehicle {
     if (kn <= 0) return;
 
     const jn = (-(1 + P.restitution) * vn) / kn;
-    this.impact = Math.max(this.impact, Math.min(1, -vn / 20));
+    const severity = Math.min(1, -vn / 20);
+    this.impact = Math.max(this.impact, severity);
+    this.impactEvent = Math.max(this.impactEvent, severity);
 
     this._rj.copy(n).multiplyScalar(jn);
     this.applyImpulse(this._rj, point);

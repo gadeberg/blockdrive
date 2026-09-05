@@ -61,6 +61,21 @@ export function gripOf(block) {
 
 export const isSolid = (b) => b !== B.AIR;
 
+// Rough hardness, 0 soft .. 1 hard. Only used to pitch the break/place sounds.
+const HARDNESS = new Float32Array(BLOCKS.length);
+for (let i = 1; i < BLOCKS.length; i++) HARDNESS[i] = 0.5;
+HARDNESS[B.GRASS] = 0.2;   HARDNESS[B.DIRT] = 0.2;
+HARDNESS[B.SAND] = 0.15;   HARDNESS[B.SNOW] = 0.1;
+HARDNESS[B.GRAVEL] = 0.3;  HARDNESS[B.LEAVES] = 0.05;
+HARDNESS[B.LOG] = 0.45;    HARDNESS[B.PLANKS] = 0.45;
+HARDNESS[B.STONE] = 0.9;   HARDNESS[B.BRICK] = 0.85;
+HARDNESS[B.CONCRETE] = 0.8; HARDNESS[B.ASPHALT] = 0.7;
+HARDNESS[B.LINE] = 0.7;    HARDNESS[B.STEEL] = 1.0;
+HARDNESS[B.LAMP] = 0.65;   HARDNESS[B.CHECKER] = 0.8;
+export function hardnessOf(block) {
+  return block > 0 && block < HARDNESS.length ? HARDNESS[block] : 0.5;
+}
+
 // --- procedural atlas -----------------------------------------------------
 
 function px(ctx, x, y, w, h, color) {

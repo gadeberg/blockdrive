@@ -1,13 +1,13 @@
 # Blockdrive
 
 A voxel world you drive through. Infinite blocky terrain with a road network cut
-into it, an arcade car with real suspension, and the ability to mine and place
-blocks from the driver's seat — carve a shortcut through a hill, pave a jump,
-then go and hit it.
+into it, an arcade car with real suspension, and a first-person builder who can
+get out and rearrange the landscape — carve a shortcut through a hill, pave a
+jump, get back in and go and hit it.
 
 Browser + three.js. No build step, no npm, no assets: textures are drawn
-procedurally into a canvas atlas at load time and three.js comes from a pinned
-CDN import map.
+procedurally into a canvas atlas at load time, every sound is synthesised at
+runtime with WebAudio, and three.js comes from a pinned CDN import map.
 
 ## Run it
 
@@ -21,6 +21,12 @@ from `file://`.
 
 ## Controls
 
+You are either **driving** or **on foot** — never both. Press `E` to swap. The
+car has to be stopped and on the ground before you can get out; you have to be
+standing next to it to get back in.
+
+### Driving
+
 | Key | |
 | --- | --- |
 | `W` / `S` | throttle / reverse |
@@ -28,13 +34,28 @@ from `file://`.
 | `Space` | handbrake — hold it into a corner to drift |
 | `Shift` | boost |
 | `C` | brake |
-| Mouse | look around (auto-recentres behind the car once you're moving) |
+| `F` | flip the car upright |
+| `L` | headlights |
+
+### On foot
+
+| Key | |
+| --- | --- |
+| `W` `A` `S` `D` | walk |
+| `Space` | jump |
+| `Shift` | sprint |
 | Left click | mine the block under the crosshair |
 | Right click | place the selected block |
 | `1`–`8` / scroll | pick a block |
+
+### Always
+
+| Key | |
+| --- | --- |
+| `E` | get out of the car / get back in |
+| Mouse | look around (while driving it recentres behind the car once you're moving) |
 | `R` | respawn |
-| `F` | flip the car upright |
-| `L` | headlights |
+| `M` | mute |
 | `Esc` | release the mouse |
 
 ## How it works
@@ -47,6 +68,8 @@ from `file://`.
 | `src/vehicle.js` | the car: box rigid body, four raycast wheels, tyre friction circle |
 | `src/blocks.js` | block registry and the procedurally drawn texture atlas |
 | `src/carmodel.js` | the car, built out of boxes |
+| `src/player.js` | the first-person walker: AABB vs voxels, auto-stepping |
+| `src/audio.js` | every sound, synthesised — engine, tyres, wind, impacts, ambience |
 | `src/noise.js` | seeded Perlin / fBm |
 | `src/main.js` | renderer, camera rig, HUD, block editing, game loop |
 
@@ -83,6 +106,40 @@ Three things exist purely to make a car work in a world made of cubes:
 If a crash does wedge the hull inside terrain, the car detects it and lifts
 itself back to the surface rather than leaving you buried.
 
+### On foot
+
+A 0.6×1.8 box that slides along the voxel grid, resolved one axis at a time by
+binary-searching back to the contact point. Auto-step is **1.05 blocks**, not
+Minecraft's 0.6: this world has no slabs or stairs, so every riser is exactly
+one block and a 0.6 step height would never fire — you'd be jumping over every
+bump in the terrain. Jumping still clears about 1.3 blocks, so a two-block wall
+is a wall. Blocked movement in mid-air keeps your horizontal velocity, so
+pressing into a ledge and jumping carries you onto it.
+
+The parked car is a box you collide with rather than walk through, and it keeps
+being simulated while you're out of it, so it settles and rolls to rest.
+
+### Sound
+
+All of it is generated at runtime; there are no audio files. The engine is four
+oscillators through one lowpass, and most of what makes it sound like an engine
+is a fake five-speed gearbox: revs climb through a gear and drop on the shift,
+instead of pitch tracking speed directly. Tyre squeal is bandpassed noise driven
+by how far past the friction limit the tyres are, crashes are a pitch-swept
+thump plus a noise burst scaled by impact severity, and block break/place sounds
+are pitched by a per-block hardness value. Underneath it all sits a slow wind
+bed with birdsong, ducked as you speed up and suppressed on sand and snow.
+
+`M` mutes. Browsers won't start audio without a user gesture, so the context is
+created when you press Drive.
+
+Bus levels live in the `MIX` object at the top of `src/audio.js`. They were set
+by tapping each chain with an `AnalyserNode` and measuring RMS, not by ear —
+filtered noise loses most of its energy, so the numbers are nowhere near where
+intuition puts them. For reference the engine runs at about 0.065 RMS flat out,
+tyre squeal peaks around 0.030 while sliding and sits near 0.002 on a straight,
+and the ambient bed idles at about 0.005.
+
 ### Debugging
 
 `window.__dbg` exposes `{ vehicle, world, terrain, input, state() }`. Because
@@ -103,6 +160,24 @@ v.pos;
 ## Tuning
 
 Handling lives in the `P` object at the top of `src/vehicle.js` — engine force,
-suspension rate, grip, steering falloff, step height. `VIEW_DISTANCE` in
-`src/main.js` trades draw distance for frame rate; chunk meshes cast shadows, so
-dropping that is the first thing to try on a slow machine.
+suspension rate, grip, steering falloff, step height. On-foot movement is the
+same pattern in `src/player.js` (set `stepHeight` to 0.6 if you want strict
+Minecraft rules). Mix levels are the `MIX` object in `src/audio.js`.
+
+Shadows use a single shadow map that follows you, sized by `SHADOW_EXTENT` and
+pushed ahead of the camera by `SHADOW_LEAD` in `src/main.js`. Both matter more
+than they look: too small a box and its edge draws a hard line across the road
+a fixed distance in front of the car, travelling with you. The box is snapped to
+whole shadow texels each frame so shadow edges don't crawl as you drive.
+
+`VIEW_DISTANCE` in `src/main.js` trades draw distance for frame rate; chunk
+meshes cast shadows, so dropping that is the first thing to try on a slow
+machine.
+
+## A note on dependencies
+
+There is deliberately no `package.json`. The game needs no build step, and
+serving the directory is the whole deployment story. If you'd rather not depend
+on the CDN at runtime, `npm i three@0.169.0` and repoint the import map in
+`index.html` at `node_modules/three/build/three.module.js` — nothing else
+changes.

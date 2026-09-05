@@ -11,6 +11,7 @@ export class Input {
     this.lookY = 0;
     this.scroll = 0;
     this.slotPressed = null;
+    this.justPressed = new Set();   // key-down edges, consumed each frame
 
     // click edges (single shot) and held state (for continuous digging)
     this.clicked = [false, false, false];
@@ -22,6 +23,7 @@ export class Input {
       if (e.repeat) return;
       const k = e.code;
       this.keys.add(k);
+      this.justPressed.add(k);
       if (k.startsWith('Digit')) {
         const n = Number(k.slice(5));
         if (n >= 1 && n <= 8) this.slotPressed = n - 1;
@@ -59,12 +61,18 @@ export class Input {
     }, { passive: true });
 
     document.addEventListener('pointerlockchange', () => {
-      this.locked = document.pointerLockElement === element;
-      if (!this.locked) {
-        this.held = [false, false, false];
-        this.keys.clear();
-        if (this.onEscape) this.onEscape();
+      if (document.pointerLockElement === element) {
+        this.locked = true;
+        this.pointerLockFailed = false;
+        return;
       }
+      // In fallback mode we never held a real lock, so a stray change event
+      // isn't the player pressing Escape — don't pause the game on it.
+      if (this.pointerLockFailed) return;
+      this.locked = false;
+      this.held = [false, false, false];
+      this.keys.clear();
+      if (this.onEscape) this.onEscape();
     });
   }
 
@@ -93,6 +101,20 @@ export class Input {
 
   down(...codes) { return codes.some((c) => this.keys.has(c)); }
 
+  /** Snapshot of on-foot inputs for this frame. */
+  walking() {
+    const fwd = this.down('KeyW', 'ArrowUp');
+    const back = this.down('KeyS', 'ArrowDown');
+    const left = this.down('KeyA', 'ArrowLeft');
+    const right = this.down('KeyD', 'ArrowRight');
+    return {
+      forward: (fwd ? 1 : 0) + (back ? -1 : 0),
+      strafe: (right ? 1 : 0) + (left ? -1 : 0),
+      jump: this.down('Space'),
+      sprint: this.down('ShiftLeft', 'ShiftRight'),
+    };
+  }
+
   /** Snapshot of driving inputs for this frame. */
   driving() {
     const up = this.down('KeyW', 'ArrowUp');
@@ -115,11 +137,13 @@ export class Input {
       scroll: this.scroll,
       slot: this.slotPressed,
       click: this.clicked.slice(),
+      keys: this.justPressed,
     };
     this.lookX = this.lookY = 0;
     this.scroll = 0;
     this.slotPressed = null;
     this.clicked = [false, false, false];
+    this.justPressed = new Set();
     return out;
   }
 }

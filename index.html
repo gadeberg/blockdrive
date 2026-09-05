@@ -33,26 +33,48 @@
     <div id="fps">-- fps</div>
   </div>
 
+  <div id="prompt"><kbd>E</kbd> get in</div>
   <div id="toast"></div>
 </div>
 
 <div id="start">
   <div class="panel">
     <h1>Blockdrive</h1>
-    <p class="tag">A voxel world you drive through. Carve the road you want.</p>
-    <div class="keys">
-      <div><kbd>W</kbd><kbd>S</kbd><span>throttle / reverse</span></div>
-      <div><kbd>A</kbd><kbd>D</kbd><span>steer</span></div>
-      <div><kbd>Space</kbd><span>handbrake — hold it into a corner to drift</span></div>
-      <div><kbd>Shift</kbd><span>boost</span></div>
+    <p class="tag">A voxel world you drive through. Park, get out, and carve the road you want.</p>
+    <div class="cols">
+      <div class="col">
+        <h2>Driving</h2>
+        <div class="keys">
+          <div><kbd>W</kbd><kbd>S</kbd><span>throttle / reverse</span></div>
+          <div><kbd>A</kbd><kbd>D</kbd><span>steer</span></div>
+          <div><kbd>Space</kbd><span>handbrake — drift</span></div>
+          <div><kbd>Shift</kbd><span>boost</span></div>
+          <div><kbd>C</kbd><span>brake</span></div>
+          <div><kbd>F</kbd><span>flip upright</span></div>
+          <div><kbd>L</kbd><span>headlights</span></div>
+        </div>
+      </div>
+      <div class="col">
+        <h2>On foot</h2>
+        <div class="keys">
+          <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>walk</span></div>
+          <div><kbd>Space</kbd><span>jump</span></div>
+          <div><kbd>Shift</kbd><span>sprint</span></div>
+          <div><kbd>LMB</kbd><span>mine</span></div>
+          <div><kbd>RMB</kbd><span>place</span></div>
+          <div><kbd>1</kbd>–<kbd>8</kbd><span>pick block</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="keys wide">
+      <div><kbd>E</kbd><span>get out of the car / get back in</span></div>
       <div><kbd>Mouse</kbd><span>look around</span></div>
-      <div><kbd>LMB</kbd><span>mine block</span></div>
-      <div><kbd>RMB</kbd><span>place block</span></div>
-      <div><kbd>1</kbd>–<kbd>8</kbd><span>pick block (or scroll)</span></div>
-      <div><kbd>R</kbd><span>respawn car</span></div>
-      <div><kbd>F</kbd><span>flip car upright</span></div>
+      <div><kbd>R</kbd><span>respawn</span></div>
+      <div><kbd>M</kbd><span>mute sound</span></div>
       <div><kbd>Esc</kbd><span>release mouse</span></div>
     </div>
+
     <button id="play">Drive</button>
     <p class="hint" id="loading">building the world…</p>
   </div>

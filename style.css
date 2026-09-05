@@ -42,6 +42,28 @@ html, body {
 #crosshair::before { left: 8px; top: 0; width: 2px; height: 18px; }
 #crosshair::after  { top: 8px; left: 0; height: 2px; width: 18px; }
 
+/* HUD pieces come and go with the mode */
+#hud.foot #dash { display: none; }
+#hud.drive #hotbar,
+#hud.drive #crosshair { display: none; }
+
+#prompt {
+  position: absolute;
+  left: 50%; bottom: 96px;
+  transform: translateX(-50%);
+  padding: 7px 14px;
+  border-radius: 8px;
+  background: var(--panel);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: var(--dim);
+  opacity: 0;
+  transition: opacity 0.18s;
+  backdrop-filter: blur(6px);
+  white-space: nowrap;
+}
+#prompt.show { opacity: 1; }
+#prompt kbd { margin-right: 6px; }
+
 #dash {
   position: absolute;
   right: 22px; bottom: 20px;
@@ -150,7 +172,7 @@ html, body {
 #start.hidden { display: none; }
 
 .panel {
-  width: min(520px, 90vw);
+  width: min(600px, 92vw);
   padding: 34px 38px 30px;
   background: rgba(16, 20, 30, 0.9);
   border: 1px solid rgba(255,255,255,0.09);
@@ -164,7 +186,26 @@ html, body {
 }
 .panel .tag { margin: 6px 0 22px; color: var(--dim); }
 
+.cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+  margin-bottom: 18px;
+}
+.col h2 {
+  margin: 0 0 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
 .keys { display: grid; gap: 7px; margin-bottom: 26px; }
+.keys.wide {
+  padding-top: 16px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
 .keys > div { display: flex; align-items: center; gap: 6px; }
 .keys span { color: var(--dim); margin-left: 6px; }
 kbd {
