@@ -12,18 +12,27 @@ runtime with WebAudio, and three.js comes from a pinned CDN import map.
 ## Run it
 
 ```bash
-./serve.py
+./serve.py --play     # playing
+./serve.py            # editing the code
 ```
 
 Then open <http://localhost:8123>. `-p 9000` picks another port, and
 `--host 0.0.0.0` makes it reachable from a phone on the same network.
 
-It's a plain static server with one job beyond `python3 -m http.server`: it
-sends `no-store` and refuses to answer `304 Not Modified`. Python's stock server
-sends no cache headers at all, which leaves the browser free to apply heuristic
-caching — you edit a module, reload, and quietly get the old one back, with no
-indication anything is stale. Any static server works if you'd rather use your
-own; just make sure it doesn't cache, or reload with Cmd/Ctrl+Shift+R.
+The only difference between the two is caching. `--play` sends normal cache
+headers and answers `304 Not Modified`, so a reload re-uses what the browser
+already has. Without it, files are sent `no-store` and conditional requests are
+refused, so a reload always shows the code that is actually on disk.
+
+That default exists because Python's stock `python3 -m http.server` sends no
+cache headers at all, which leaves the browser free to cache heuristically: you
+edit a module, reload, and quietly get the old one back with nothing to say the
+page is stale.
+
+Honestly, on localhost `--play` saves very little — the whole game is about
+100 KB of local files. The one genuinely large download is three.js from the
+CDN, and that is cached on the CDN's own headers either way. Any static server
+works if you would rather use your own.
 
 ES modules won't load from `file://`, so opening `index.html` directly does not
 work — it has to be served over http.
@@ -80,7 +89,7 @@ standing next to it to get back in.
 | `src/player.js` | the first-person walker: AABB vs voxels, auto-stepping |
 | `src/audio.js` | every sound, synthesised — engine, tyres, wind, impacts, ambience |
 | `src/storage.js` | saving and loading worlds: slots, files, and validation |
-| `serve.py` | dev server: static files with caching disabled |
+| `serve.py` | local server; caching off by default, `--play` turns it on |
 | `src/noise.js` | seeded Perlin / fBm |
 | `src/main.js` | renderer, camera rig, HUD, block editing, game loop |
 
