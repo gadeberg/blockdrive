@@ -4,7 +4,7 @@
     {
       "name": "blockdrive",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8123"],
+      "runtimeArgs": ["serve.py"],
       "port": 8123
     }
   ]

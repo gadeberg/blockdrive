@@ -12,12 +12,21 @@ runtime with WebAudio, and three.js comes from a pinned CDN import map.
 ## Run it
 
 ```bash
-python3 -m http.server 8123
+./serve.py
 ```
 
-Then open <http://localhost:8123>. Any static server works — the only
-requirement is that the files are served over http, since ES modules won't load
-from `file://`.
+Then open <http://localhost:8123>. `-p 9000` picks another port, and
+`--host 0.0.0.0` makes it reachable from a phone on the same network.
+
+It's a plain static server with one job beyond `python3 -m http.server`: it
+sends `no-store` and refuses to answer `304 Not Modified`. Python's stock server
+sends no cache headers at all, which leaves the browser free to apply heuristic
+caching — you edit a module, reload, and quietly get the old one back, with no
+indication anything is stale. Any static server works if you'd rather use your
+own; just make sure it doesn't cache, or reload with Cmd/Ctrl+Shift+R.
+
+ES modules won't load from `file://`, so opening `index.html` directly does not
+work — it has to be served over http.
 
 ## Controls
 
@@ -71,6 +80,7 @@ standing next to it to get back in.
 | `src/player.js` | the first-person walker: AABB vs voxels, auto-stepping |
 | `src/audio.js` | every sound, synthesised — engine, tyres, wind, impacts, ambience |
 | `src/storage.js` | saving and loading worlds: slots, files, and validation |
+| `serve.py` | dev server: static files with caching disabled |
 | `src/noise.js` | seeded Perlin / fBm |
 | `src/main.js` | renderer, camera rig, HUD, block editing, game loop |
 
