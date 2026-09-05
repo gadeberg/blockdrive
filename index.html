@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blockdrive</title>
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js"
+  }
+}
+</script>
+</head>
+<body>
+<div id="app"></div>
+
+<div id="hud" class="hidden">
+  <div id="crosshair"></div>
+
+  <div id="dash">
+    <div class="gauge">
+      <span id="speed">0</span><span class="unit">km/h</span>
+    </div>
+    <div class="gear" id="gear">N</div>
+  </div>
+
+  <div id="hotbar"></div>
+
+  <div id="stats">
+    <div><b id="coords">0, 0, 0</b></div>
+    <div id="fps">-- fps</div>
+  </div>
+
+  <div id="toast"></div>
+</div>
+
+<div id="start">
+  <div class="panel">
+    <h1>Blockdrive</h1>
+    <p class="tag">A voxel world you drive through. Carve the road you want.</p>
+    <div class="keys">
+      <div><kbd>W</kbd><kbd>S</kbd><span>throttle / reverse</span></div>
+      <div><kbd>A</kbd><kbd>D</kbd><span>steer</span></div>
+      <div><kbd>Space</kbd><span>handbrake — hold it into a corner to drift</span></div>
+      <div><kbd>Shift</kbd><span>boost</span></div>
+      <div><kbd>Mouse</kbd><span>look around</span></div>
+      <div><kbd>LMB</kbd><span>mine block</span></div>
+      <div><kbd>RMB</kbd><span>place block</span></div>
+      <div><kbd>1</kbd>–<kbd>8</kbd><span>pick block (or scroll)</span></div>
+      <div><kbd>R</kbd><span>respawn car</span></div>
+      <div><kbd>F</kbd><span>flip car upright</span></div>
+      <div><kbd>Esc</kbd><span>release mouse</span></div>
+    </div>
+    <button id="play">Drive</button>
+    <p class="hint" id="loading">building the world…</p>
+  </div>
+</div>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
